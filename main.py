@@ -4,7 +4,7 @@ import logging
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
-TELEGRAM_BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
+TELEGRAM_BOT_TOKEN = "8725595567:AAFeQb5xhmJMqZybazVmxDPy2_qR1RshRno"
 
 VIDEO_DELETE_DELAY = 2 * 60
 VIDEO_RESEND_DELAY = 40 * 60
