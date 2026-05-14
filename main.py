@@ -20,6 +20,28 @@ async def delete_msg(bot, chat_id, msg_id):
         pass
 
 
+async def process_media(bot, chat_id, msg_id, file_id, caption, is_video=True):
+    await asyncio.sleep(DELETE_DELAY)
+
+    await delete_msg(bot, chat_id, msg_id)
+
+    try:
+        if is_video:
+            await bot.send_video(
+                ADMIN_ID,
+                video=file_id,
+                caption=caption
+            )
+        else:
+            await bot.send_animation(
+                ADMIN_ID,
+                animation=file_id,
+                caption=caption
+            )
+    except:
+        pass
+
+
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     if not msg:
@@ -32,8 +54,35 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if msg.video:
-        file_id = msg.video.file_id
-        caption = msg.caption
+        asyncio.create_task(
+            process_media(
+                context.bot,
+                msg.chat_id,
+                msg.message_id,
+                msg.video.file_id,
+                msg.caption,
+                True
+            )
+        )
 
-        await asyncio.sleep(DELETE_DELAY)
-        await delete_msg(context.bot, msg.chat
+    elif msg.animation:
+        asyncio.create_task(
+            process_media(
+                context.bot,
+                msg.chat_id,
+                msg.message_id,
+                msg.animation.file_id,
+                msg.caption,
+                False
+            )
+        )
+
+
+def main():
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(MessageHandler(filters.ALL, handle))
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    main()
