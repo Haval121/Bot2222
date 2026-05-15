@@ -8,7 +8,7 @@ TOKEN = "8725595567:AAFeQb5xhmJMqZybazVmxDPy2_qR1RshRno"
 ADMIN_ID = 8734106005
 DELETE_DELAY = 360
 
-URL_REGEX = re.compile(r'https?://\S+|t\.me/\S+|www\.\S+', re.IGNORECASE)
+URL_REGEX = re.compile(r'(https?://\S+|t\.me/\S+|www\.\S+|@\w+)', re.IGNORECASE)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -27,17 +27,9 @@ async def process_media(bot, chat_id, msg_id, file_id, caption, is_video=True):
 
     try:
         if is_video:
-            await bot.send_video(
-                ADMIN_ID,
-                video=file_id,
-                caption=caption
-            )
+            await bot.send_video(ADMIN_ID, video=file_id, caption=caption)
         else:
-            await bot.send_animation(
-                ADMIN_ID,
-                animation=file_id,
-                caption=caption
-            )
+            await bot.send_animation(ADMIN_ID, animation=file_id, caption=caption)
     except:
         pass
 
