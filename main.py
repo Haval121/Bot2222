@@ -4,7 +4,7 @@ import re
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
-TOKEN = "8725595567:AAGAknpTVYp6ipfXxadnWsGpKnCnRRU3z5c"
+TOKEN = "8725595567:AAG1lw-AMx0v9EQS_i9fsFPn5QcFi8zHaSc"
 ADMIN_ID = 8734106005
 
 DELETE_DELAY = 900
