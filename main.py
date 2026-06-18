@@ -6,7 +6,9 @@ from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTyp
 
 TOKEN = "8725595567:AAGAknpTVYp6ipfXxadnWsGpKnCnRRU3z5c"
 ADMIN_ID = 8734106005
+
 DELETE_DELAY = 360
+PHOTO_DELETE_DELAY = 10800  # 3 hours
 
 URL_REGEX = re.compile(r'(https?://\S+|t\.me/\S+|www\.\S+|@\w+)', re.IGNORECASE)
 
@@ -16,6 +18,18 @@ logging.basicConfig(level=logging.INFO)
 async def delete_msg(bot, chat_id, msg_id):
     try:
         await bot.delete_message(chat_id=chat_id, message_id=msg_id)
+    except:
+        pass
+
+
+async def delete_photo(bot, chat_id, msg_id):
+    await asyncio.sleep(PHOTO_DELETE_DELAY)
+
+    try:
+        await bot.delete_message(
+            chat_id=chat_id,
+            message_id=msg_id
+        )
     except:
         pass
 
@@ -66,6 +80,15 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 msg.animation.file_id,
                 msg.caption,
                 False
+            )
+        )
+
+    elif msg.photo:
+        asyncio.create_task(
+            delete_photo(
+                context.bot,
+                msg.chat_id,
+                msg.message_id
             )
         )
 
