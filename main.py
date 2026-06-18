@@ -7,7 +7,7 @@ from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTyp
 TOKEN = "8725595567:AAGAknpTVYp6ipfXxadnWsGpKnCnRRU3z5c"
 ADMIN_ID = 8734106005
 
-DELETE_DELAY = 720
+DELETE_DELAY = 900
 PHOTO_DELETE_DELAY = 10800  # 3 hours
 
 URL_REGEX = re.compile(r'(https?://\S+|t\.me/\S+|www\.\S+|@\w+)', re.IGNORECASE)
@@ -24,12 +24,8 @@ async def delete_msg(bot, chat_id, msg_id):
 
 async def delete_photo(bot, chat_id, msg_id):
     await asyncio.sleep(PHOTO_DELETE_DELAY)
-
     try:
-        await bot.delete_message(
-            chat_id=chat_id,
-            message_id=msg_id
-        )
+        await bot.delete_message(chat_id=chat_id, message_id=msg_id)
     except:
         pass
 
@@ -55,10 +51,17 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = msg.text or msg.caption or ""
 
+    # 🔗 block links + usernames
     if URL_REGEX.search(text):
         await delete_msg(context.bot, msg.chat_id, msg.message_id)
         return
 
+    # 🤖 block ONLY bot text messages
+    if msg.text and msg.from_user and msg.from_user.is_bot:
+        await delete_msg(context.bot, msg.chat_id, msg.message_id)
+        return
+
+    # 🎥 video
     if msg.video:
         asyncio.create_task(
             process_media(
@@ -71,6 +74,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         )
 
+    # 🎞 gif / animation
     elif msg.animation:
         asyncio.create_task(
             process_media(
@@ -83,6 +87,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         )
 
+    # 🖼 photo
     elif msg.photo:
         asyncio.create_task(
             delete_photo(
