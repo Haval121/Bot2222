@@ -17,7 +17,7 @@ DATABASE_CHANNEL_ID = -1004438191215
 
 DB_PATH = "bot_data.db"
 
-# Helper function to auto-delete user message
+# Heler function to auto-delete user message
 async def delete_user_message(update: Update):
     try:
         if update.message:
