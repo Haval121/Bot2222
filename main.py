@@ -266,7 +266,7 @@ async def handle_video_upload(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text("تکایە ڤیدیۆیەک بنێرە یان دوگمەی '⬅️ گەڕانەوە' دابگرە.", reply_markup=back_keyboard())
         return UPLOAD_VIDEO
 
-# ----------------- Profile & Manage Posts (Custom Share Link & Text) -----------------
+# ----------------- Profil & Manage Posts (Custom Share Link & Text) -----------------
 async def my_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user = get_user(user_id)
