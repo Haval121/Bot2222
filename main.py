@@ -27,7 +27,7 @@ async def delete_user_message(update: Update):
     except Exception:
         pass
 
-# Helper function to delete previous bot messages
+# Hlper function to delete previous bot messages
 async def delete_previous_bot_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int):
     try:
         if 'last_bot_msg_id' in context.user_data:
