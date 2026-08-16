@@ -1,6 +1,7 @@
 import logging
 import sqlite3
 import os
+import asyncio
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
@@ -12,13 +13,31 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 USERNAME, NAME, UPLOAD_VIDEO, SEARCH_QUERY, EDIT_CAPTION = range(5)
 
 BOT_TOKEN = "8681382827:AAHZdoim4mbMvhvsjFqeW9AOc23OuV_kl-A"
+DATABASE_CHANNEL_ID = -1004438191215
 
-# ----------------- Database Setup (Railway Volume Support) -----------------
-# ئەگەر لەسەر Railway بوو، داتاکان دەچنە ناو Volume بۆ ئەوەی نەسڕێنەوە
-DATA_DIR = "/app/data" if os.path.exists("/app") else "."
-os.makedirs(DATA_DIR, exist_ok=True)
-DB_PATH = os.path.join(DATA_DIR, "bot_data.db")
+DB_PATH = "bot_data.db"
 
+# ----------------- Database Sync with Telegram Channel -----------------
+async def sync_db_from_telegram(app):
+    try:
+        async for message in app.bot.get_chat_history(chat_id=DATABASE_CHANNEL_ID, limit=10):
+            if message.document and message.document.file_name == DB_PATH:
+                file = await app.bot.get_file(message.document.file_id)
+                await file.download_to_drive(DB_PATH)
+                print("✅ داتابەیس بە سەرکەوتوویی لە کەناڵی تێگرامەوە داگیرا.")
+                return
+    except Exception as e:
+        print(f"⚠️ کێشە لە داگرتنی داتابەیس: {e}")
+
+async def backup_db_to_telegram(context: ContextTypes.DEFAULT_TYPE):
+    try:
+        if os.path.exists(DB_PATH):
+            with open(DB_PATH, 'rb') as f:
+                await context.bot.send_document(chat_id=DATABASE_CHANNEL_ID, document=f, caption="🔄 Backup Database")
+    except Exception as e:
+        print(f"⚠️ کێشە لە ڕەوانەکردنی Backup: {e}")
+
+# ----------------- Database Setup -----------------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -51,8 +70,6 @@ def init_db():
     
     conn.commit()
     conn.close()
-
-init_db()
 
 # Helper Functions for Database
 def get_user(user_id):
@@ -161,7 +178,7 @@ def main_keyboard():
 def back_keyboard():
     return ReplyKeyboardMarkup([[KeyboardButton("⬅️ گەڕانەوە")]], resize_keyboard=True)
 
-# ----------------- Start & Registration (With Deep Linking Profile View) -----------------
+# ----------------- Start & Registration -----------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
@@ -245,9 +262,10 @@ async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name = update.message.text
     
     add_user(user_id, username, name)
+    await backup_db_to_telegram(context)
     await update.message.reply_text("✅ هەژمارەکەت بە سەرکەوتوویی دروستکرا.", reply_markup=main_keyboard())
     return ConversationHandler.END
-        # ----------------- Upload Video ----------------
+    # ----------------- Upload Video -----------------
 async def upload_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🎬 **بڵاوکردنەوەی ڤیدیۆ**\n\nتەنها ڤیدیۆ بنێره، من خۆکارانه زیادیدەکەم بۆ بەشی ڤیدیۆکان.\nدەتوانیت #هاشتاگیش لەگەڵ ژێرنووس ببنوسیت.",
@@ -266,13 +284,14 @@ async def handle_video_upload(update: Update, context: ContextTypes.DEFAULT_TYPE
         caption = update.message.caption or ""
         
         add_video(user_id, video_id, caption)
+        await backup_db_to_telegram(context)
         await update.message.reply_text("✅ ڤیدیۆکەت بە سەرکەوتوویی بڵاوکرایەوە!", reply_markup=main_keyboard())
         return ConversationHandler.END
     else:
         await update.message.reply_text("تکایە ڤیدیۆیەک بنێرە یان دوگمەی '⬅️ گەڕانەوە' دابگرە.", reply_markup=back_keyboard())
         return UPLOAD_VIDEO
 
-# ----------------- Profile & Manage Posts (Custom Share Link & Text) -----------------
+# ----------------- Profile & Manage Posts -----------------
 async def my_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user = get_user(user_id)
@@ -414,6 +433,7 @@ async def handle_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "do_delete_account":
         await query.answer()
         delete_account(user_id)
+        await backup_db_to_telegram(context)
         await query.message.delete()
         await query.message.reply_text(
             "🗑 **هەژمارەکەت و هەموو داتاکانت بە تەواوی سڕانەوە.**\n\nدەتوانیت هەر کاتێک ویستت سەرلەنوێ هەژمار دروست بکەیتەوە.",
@@ -442,6 +462,7 @@ async def handle_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("like_"):
         vid_id = int(data.split("_")[1])
         is_liked = toggle_like(user_id, vid_id)
+        await backup_db_to_telegram(context)
         
         if is_liked:
             await query.answer("لایکت کرد ❤️")
@@ -477,6 +498,7 @@ async def handle_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.answer("❌ تۆ تەنها دەتوانیت پۆستەکانی خۆت بسڕیتەوە!", show_alert=True)
                 return
             delete_video(vid_id)
+            await backup_db_to_telegram(context)
             await query.answer("پۆستەکە سڕایەوە")
             await query.message.delete()
             await query.message.reply_text("✅ پۆستەکە بە سەرکەوتوویی سڕایەوە.")
@@ -509,6 +531,7 @@ async def save_edited_caption(update: Update, context: ContextTypes.DEFAULT_TYPE
         target_vid = next((v for v in videos if v[0] == vid_id), None)
         if target_vid and target_vid[1] == user_id:
             update_caption(vid_id, new_caption)
+            await backup_db_to_telegram(context)
             await update.message.reply_text("✅ پۆستەکە بە سەرکەوتوویی دەستکاری کرا!", reply_markup=main_keyboard())
         else:
             await update.message.reply_text("❌ بڕگە ڕێگەپێدراو نییە بۆ دەستکاریکردنی ئەم پۆستە.", reply_markup=main_keyboard())
@@ -547,6 +570,10 @@ async def go_back(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ----------------- Main Execution -----------------
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
+
+    # Sync Database from Telegram Channel on Startup
+    asyncio.get_event_loop().run_until_complete(sync_db_from_telegram(app))
+    init_db()
 
     reg_handler = ConversationHandler(
         entry_points=[MessageHandler(filters.Regex("^📝 دروستکردنی هەژمار$"), start_registration)],
@@ -597,4 +624,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-            
+        
