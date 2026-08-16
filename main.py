@@ -1,5 +1,6 @@
 import logging
 import sqlite3
+import os
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
@@ -12,9 +13,14 @@ USERNAME, NAME, UPLOAD_VIDEO, SEARCH_QUERY, EDIT_CAPTION = range(5)
 
 BOT_TOKEN = "8681382827:AAHZdoim4mbMvhvsjFqeW9AOc23OuV_kl-A"
 
-# ----------------- Database Setup -----------------
+# ----------------- Database Setup (Railway Volume Support) -----------------
+# ئەگەر لەسەر Railway بوو، داتاکان دەچنە ناو Volume بۆ ئەوەی نەسڕێنەوە
+DATA_DIR = "/app/data" if os.path.exists("/app") else "."
+os.makedirs(DATA_DIR, exist_ok=True)
+DB_PATH = os.path.join(DATA_DIR, "bot_data.db")
+
 def init_db():
-    conn = sqlite3.connect("bot_data.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     cursor.execute('''
@@ -50,7 +56,7 @@ init_db()
 
 # Helper Functions for Database
 def get_user(user_id):
-    conn = sqlite3.connect("bot_data.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT user_id, username, name FROM users WHERE user_id = ?", (user_id,))
     row = cursor.fetchone()
@@ -58,21 +64,21 @@ def get_user(user_id):
     return row
 
 def add_user(user_id, username, name):
-    conn = sqlite3.connect("bot_data.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("INSERT OR REPLACE INTO users (user_id, username, name) VALUES (?, ?, ?)", (user_id, username, name))
     conn.commit()
     conn.close()
 
 def add_video(user_id, video_file_id, caption):
-    conn = sqlite3.connect("bot_data.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("INSERT INTO videos (user_id, video_file_id, caption, views) VALUES (?, ?, ?, 1)", (user_id, video_file_id, caption))
     conn.commit()
     conn.close()
 
 def get_all_videos():
-    conn = sqlite3.connect("bot_data.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT id, user_id, video_file_id, caption, views FROM videos")
     rows = cursor.fetchall()
@@ -80,7 +86,7 @@ def get_all_videos():
     return rows
 
 def get_user_videos(user_id):
-    conn = sqlite3.connect("bot_data.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT id, video_file_id, caption, views FROM videos WHERE user_id = ?", (user_id,))
     rows = cursor.fetchall()
@@ -88,14 +94,14 @@ def get_user_videos(user_id):
     return rows
 
 def update_views(video_id):
-    conn = sqlite3.connect("bot_data.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("UPDATE videos SET views = views + 1 WHERE id = ?", (video_id,))
     conn.commit()
     conn.close()
 
 def toggle_like(user_id, video_id):
-    conn = sqlite3.connect("bot_data.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM likes WHERE user_id = ? AND video_id = ?", (user_id, video_id))
     liked = cursor.fetchone()
@@ -112,7 +118,7 @@ def toggle_like(user_id, video_id):
     return is_liked
 
 def get_like_count(video_id):
-    conn = sqlite3.connect("bot_data.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM likes WHERE video_id = ?", (video_id,))
     count = cursor.fetchone()[0]
@@ -120,14 +126,14 @@ def get_like_count(video_id):
     return count
 
 def update_caption(video_id, new_caption):
-    conn = sqlite3.connect("bot_data.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("UPDATE videos SET caption = ? WHERE id = ?", (new_caption, video_id))
     conn.commit()
     conn.close()
 
 def delete_video(video_id):
-    conn = sqlite3.connect("bot_data.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM videos WHERE id = ?", (video_id,))
     cursor.execute("DELETE FROM likes WHERE video_id = ?", (video_id,))
@@ -135,7 +141,7 @@ def delete_video(video_id):
     conn.close()
 
 def delete_account(user_id):
-    conn = sqlite3.connect("bot_data.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM likes WHERE user_id = ?", (user_id,))
     cursor.execute("DELETE FROM likes WHERE video_id IN (SELECT id FROM videos WHERE user_id = ?)", (user_id,))
@@ -162,7 +168,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args and context.args[0].startswith("prof_"):
         target_username = context.args[0].replace("prof_", "")
         
-        conn = sqlite3.connect("bot_data.db")
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT user_id, username, name FROM users WHERE username = ?", (target_username,))
         target_user = cursor.fetchone()
@@ -241,7 +247,7 @@ async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     add_user(user_id, username, name)
     await update.message.reply_text("✅ هەژمارەکەت بە سەرکەوتوویی دروستکرا.", reply_markup=main_keyboard())
     return ConversationHandler.END
-    # ----------------- Upload Video -----------------
+        # ----------------- Upload Video -----------------
 async def upload_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🎬 **بڵاوکردنەوەی ڤیدیۆ**\n\nتەنها ڤیدیۆ بنێره، من خۆکارانه زیادیدەکەم بۆ بەشی ڤیدیۆکان.\nدەتوانیت #هاشتاگیش لەگەڵ ژێرنووس ببنوسیت.",
@@ -266,7 +272,7 @@ async def handle_video_upload(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text("تکایە ڤیدیۆیەک بنێرە یان دوگمەی '⬅️ گەڕانەوە' دابگرە.", reply_markup=back_keyboard())
         return UPLOAD_VIDEO
 
-# ----------------- Profil & Manage Posts (Custom Share Link & Text) -----------------
+# ----------------- Profile & Manage Posts (Custom Share Link & Text) -----------------
 async def my_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user = get_user(user_id)
@@ -591,4 +597,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-    
+            
