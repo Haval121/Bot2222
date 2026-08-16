@@ -12,10 +12,18 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 USERNAME, NAME, UPLOAD_VIDEO, SEARCH_QUERY, EDIT_CAPTION = range(5)
 
-BOT_TOKEN = "8681382827:AAHZdoim4mbMvhvsjFqeW9AOc23OuV_kl-A"
+BOT_TOKEN = "8696410778:AAGYwEOPlnWRQEGe47JuXp8sN8I_QcBNfoU"
 DATABASE_CHANNEL_ID = -1004438191215
 
 DB_PATH = "bot_data.db"
+
+# Helper function to auto-delete user message
+async def delete_user_message(update: Update):
+    try:
+        if update.message:
+            await update.message.delete()
+    except Exception:
+        pass
 
 # ----------------- Database Sync with Telegram Channel -----------------
 async def sync_db_from_telegram(app):
@@ -180,6 +188,7 @@ def back_keyboard():
 
 # ----------------- Start & Registration -----------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await delete_user_message(update)
     user_id = update.effective_user.id
     
     if context.args and context.args[0].startswith("prof_"):
@@ -218,89 +227,101 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     grid_buttons.append(row)
                     
             kb = InlineKeyboardMarkup(grid_buttons) if grid_buttons else None
-            await update.message.reply_text(text, reply_markup=kb)
+            await context.bot.send_message(chat_id=user_id, text=text, reply_markup=kb)
             return ConversationHandler.END
         else:
-            await update.message.reply_text("❌ ئەم هەژمارە نەدۆزرایەوە یان سڕدراوەتەوە.")
+            await context.bot.send_message(chat_id=user_id, text="❌ ئەم هەژمارە نەدۆزرایەوە یان سڕدراوەتەوە.")
             return ConversationHandler.END
 
     welcome_text = "┌─── 🎬 TikTok_Hub ───┐\n\n│ 👋 سڵاو!\n\n│ 🎬 بەخێربێیت بۆ TikTok_hub\n\n│ 📩 ئێستا پۆست بکه لە هەژمارەکەت\n\n└─────────────────────┘"
     
     if get_user(user_id):
-        await update.message.reply_text(welcome_text, reply_markup=main_keyboard())
+        await context.bot.send_message(chat_id=user_id, text=welcome_text, reply_markup=main_keyboard())
         return ConversationHandler.END
     else:
-        await update.message.reply_text(
-            f"{welcome_text}\n\n🧾 بۆ بەکارهێنانی بۆت، سەرەتا هەژمارەکەت دروست بکه.",
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=f"{welcome_text}\n\n🧾 بۆ بەکارهێنانی بۆت، سەرەتا هەژمارەکەت دروست بکه.",
             reply_markup=ReplyKeyboardMarkup([[KeyboardButton("📝 دروستکردنی هەژمار")]], resize_keyboard=True)
         )
         return ConversationHandler.END
 
 async def start_registration(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🧾 **دروستکردنی هەژمار**\n\nتکایه username ئەکەت بنووسه.\nتەنها پیته ئینگلیزییەکان، ژماره و _ بەکاربهێنه.",
+    await delete_user_message(update)
+    user_id = update.effective_user.id
+    await context.bot.send_message(
+        chat_id=user_id,
+        text="🧾 **دروستکردنی هەژمار**\n\nتکایه username ئەکەت بنووسه.\nتەنها پیته ئینگلیزییەکان، ژماره و _ بەکاربهێنه.",
         reply_markup=back_keyboard()
     )
     return USERNAME
 
 async def get_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await delete_user_message(update)
+    user_id = update.effective_user.id
     if update.message.text == "⬅️ گەڕانەوە":
-        await update.message.reply_text("گەڕایتەوە بۆ ڕووکاری سەرەکی.", reply_markup=main_keyboard())
+        await context.bot.send_message(chat_id=user_id, text="گەڕایتەوە بۆ ڕووکاری سەرەکی.", reply_markup=main_keyboard())
         return ConversationHandler.END
 
     context.user_data['username'] = update.message.text.replace("@", "")
-    await update.message.reply_text("✅ username تۆمار کرا.\n\nئێستا ناوت بنووسه:", reply_markup=back_keyboard())
+    await context.bot.send_message(chat_id=user_id, text="✅ username تۆمار کرا.\n\nئێستا ناوت بنووسه:", reply_markup=back_keyboard())
     return NAME
 
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await delete_user_message(update)
+    user_id = update.effective_user.id
     if update.message.text == "⬅️ گەڕانەوە":
-        await update.message.reply_text("گەڕایتەوە بۆ ڕووکاری سەرەکی.", reply_markup=main_keyboard())
+        await context.bot.send_message(chat_id=user_id, text="گەڕایتەوە بۆ ڕووکاری سەرەکی.", reply_markup=main_keyboard())
         return ConversationHandler.END
 
-    user_id = update.effective_user.id
     username = context.user_data['username']
     name = update.message.text
     
     add_user(user_id, username, name)
     await backup_db_to_telegram(context)
-    await update.message.reply_text("✅ هەژمارەکەت بە سەرکەوتوویی دروستکرا.", reply_markup=main_keyboard())
+    await context.bot.send_message(chat_id=user_id, text="✅ هەژمارەکەت بە سەرکەوتوویی دروستکرا.", reply_markup=main_keyboard())
     return ConversationHandler.END
-    # ----------------- Upload Video -----------------
+# ----------------- Upload Video -----------------
 async def upload_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🎬 **بڵاوکردنەوەی ڤیدیۆ**\n\nتەنها ڤیدیۆ بنێره، من خۆکارانه زیادیدەکەم بۆ بەشی ڤیدیۆکان.\nدەتوانیت #هاشتاگیش لەگەڵ ژێرنووس ببنوسیت.",
+    await delete_user_message(update)
+    user_id = update.effective_user.id
+    await context.bot.send_message(
+        chat_id=user_id,
+        text="🎬 **بڵاوکردنەوەی ڤیدیۆ**\n\nتەنها ڤیدیۆ بنێره، من خۆکارانه زیادیدەکەم بۆ بەشی ڤیدیۆکان.\nدەتوانیت #هاشتاگیش لەگەڵ ژێرنووس ببنوسیت.",
         reply_markup=back_keyboard()
     )
     return UPLOAD_VIDEO
 
 async def handle_video_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await delete_user_message(update)
     user_id = update.effective_user.id
-    if update.message.text == "⬅️ گەڕانەوە":
-        await update.message.reply_text("گەڕایتەوە بۆ ڕووکاری سەرەکی.", reply_markup=main_keyboard())
+    if update.message and update.message.text == "⬅️ گەڕانەوە":
+        await context.bot.send_message(chat_id=user_id, text="گەڕایتەوە بۆ ڕووکاری سەرەکی.", reply_markup=main_keyboard())
         return ConversationHandler.END
 
-    if update.message.video:
+    if update.message and update.message.video:
         video_id = update.message.video.file_id
         caption = update.message.caption or ""
         
         add_video(user_id, video_id, caption)
         await backup_db_to_telegram(context)
-        await update.message.reply_text("✅ ڤیدیۆکەت بە سەرکەوتوویی بڵاوکرایەوە!", reply_markup=main_keyboard())
+        await context.bot.send_message(chat_id=user_id, text="✅ ڤیدیۆکەت بە سەرکەوتوویی بڵاوکرایەوە!", reply_markup=main_keyboard())
         return ConversationHandler.END
     else:
-        await update.message.reply_text("تکایە ڤیدیۆیەک بنێرە یان دوگمەی '⬅️ گەڕانەوە' دابگرە.", reply_markup=back_keyboard())
+        await context.bot.send_message(chat_id=user_id, text="تکایە ڤیدیۆیەک بنێرە یان دوگمەی '⬅️ گەڕانەوە' دابگرە.", reply_markup=back_keyboard())
         return UPLOAD_VIDEO
 
 # ----------------- Profile & Manage Posts -----------------
 async def my_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await delete_user_message(update)
     user_id = update.effective_user.id
     user = get_user(user_id)
     
     if not user:
-        await update.message.reply_text("تکایە سەرەتا هەژمار دروست بکە.", reply_markup=main_keyboard())
+        await context.bot.send_message(chat_id=user_id, text="تکایە سەرەتا هەژمار دروست بکە.", reply_markup=main_keyboard())
         return
 
-    bot_username = "TikTok_hubbbb_bot"
+    bot_username = "TikTok_hub_kurdish_bot"
     share_url = f"https://t.me/share/url?url=https://t.me/{bot_username}?start=prof_{user[1]}&text=سەیری%20پڕۆفایل%20و%20ڤیدیۆکانم%20بکە%20لە%20تۆڕی%20TikTok_Hub!%20🎬"
 
     my_vids = get_user_videos(user_id)
@@ -330,13 +351,15 @@ async def my_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
     grid_buttons.append([InlineKeyboardButton("⚠️ 🗑 سڕینەوەی هەژمار", callback_data="confirm_delete_account")])
     
     kb = InlineKeyboardMarkup(grid_buttons)
-    await update.message.reply_text(text, reply_markup=kb)
+    await context.bot.send_message(chat_id=user_id, text=text, reply_markup=kb)
 
 # ----------------- Watch Videos & Next/Prev Sequence -----------------
 async def watch_videos(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await delete_user_message(update)
+    user_id = update.effective_user.id
     videos = get_all_videos()
     if not videos:
-        await update.message.reply_text("هیچ ڤیدیۆیەک بڵاو نەکراوەتەوە.", reply_markup=main_keyboard())
+        await context.bot.send_message(chat_id=user_id, text="هیچ ڤیدیۆیەک بڵاو نەکراوەتەوە.", reply_markup=main_keyboard())
         return
     
     context.user_data['current_vid_index'] = 0
@@ -390,7 +413,9 @@ async def send_video_card(update, context, is_new_message=False):
         except Exception:
             pass
     elif is_new_message:
-        await update.message.reply_video(
+        user_id = update.effective_user.id
+        await context.bot.send_video(
+            chat_id=user_id,
             video=video_file_id,
             caption=caption_text,
             reply_markup=kb
@@ -518,13 +543,14 @@ async def handle_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return EDIT_CAPTION
 
 async def save_edited_caption(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await delete_user_message(update)
+    user_id = update.effective_user.id
     if update.message.text == "⬅️ گەڕانەوە":
-        await update.message.reply_text("گەڕایتەوە بۆ ڕووکاری سەرەکی.", reply_markup=main_keyboard())
+        await context.bot.send_message(chat_id=user_id, text="گەڕایتەوە بۆ ڕووکاری سەرەکی.", reply_markup=main_keyboard())
         return ConversationHandler.END
 
     new_caption = update.message.text
     vid_id = context.user_data.get('editing_vid_id')
-    user_id = update.effective_user.id
     
     if vid_id:
         videos = get_all_videos()
@@ -532,39 +558,46 @@ async def save_edited_caption(update: Update, context: ContextTypes.DEFAULT_TYPE
         if target_vid and target_vid[1] == user_id:
             update_caption(vid_id, new_caption)
             await backup_db_to_telegram(context)
-            await update.message.reply_text("✅ پۆستەکە بە سەرکەوتوویی دەستکاری کرا!", reply_markup=main_keyboard())
+            await context.bot.send_message(chat_id=user_id, text="✅ پۆستەکە بە سەرکەوتوویی دەستکاری کرا!", reply_markup=main_keyboard())
         else:
-            await update.message.reply_text("❌ بڕگە ڕێگەپێدراو نییە بۆ دەستکاریکردنی ئەم پۆستە.", reply_markup=main_keyboard())
+            await context.bot.send_message(chat_id=user_id, text="❌ بڕگە ڕێگەپێدراو نییە بۆ دەستکاریکردنی ئەم پۆستە.", reply_markup=main_keyboard())
             
     return ConversationHandler.END
 
 # ----------------- Search -----------------
 async def search_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🔍 ناوی بەکارهێنەر یاخود وشەیەک لە کەپشنی ڤیدیۆ بنووسە (یان #هاشتاگ):",
+    await delete_user_message(update)
+    user_id = update.effective_user.id
+    await context.bot.send_message(
+        chat_id=user_id,
+        text="🔍 ناوی بەکارهێنەر یاخود وشەیەک لە کەپشنی ڤیدیۆ بنووسە (یان #هاشتاگ):",
         reply_markup=back_keyboard()
     )
     return SEARCH_QUERY
 
 async def process_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await delete_user_message(update)
+    user_id = update.effective_user.id
     q = update.message.text
     if q == "⬅️ گەڕانەوە":
-        await update.message.reply_text("گەڕایتەوە بۆ ڕووکاری سەرەکی.", reply_markup=main_keyboard())
+        await context.bot.send_message(chat_id=user_id, text="گەڕایتەوە بۆ ڕووکاری سەرەکی.", reply_markup=main_keyboard())
         return ConversationHandler.END
 
     videos = get_all_videos()
     results = [v for v in videos if q.lower() in v[3].lower()]
     
     if not results:
-        await update.message.reply_text("هیچ نەدۆزرایەوە.", reply_markup=main_keyboard())
+        await context.bot.send_message(chat_id=user_id, text="هیچ نەدۆزرایەوە.", reply_markup=main_keyboard())
     else:
         for vid in results:
-            await update.message.reply_video(vid[2], caption=vid[3])
-        await update.message.reply_text("ئەنجامەکانی گەڕان 👆", reply_markup=main_keyboard())
+            await context.bot.send_video(chat_id=user_id, video=vid[2], caption=vid[3])
+        await context.bot.send_message(chat_id=user_id, text="ئەنجامەکانی گەڕان 👆", reply_markup=main_keyboard())
     return ConversationHandler.END
 
 async def go_back(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("گەڕایتەوە بۆ ڕووکاری سەرەکی.", reply_markup=main_keyboard())
+    await delete_user_message(update)
+    user_id = update.effective_user.id
+    await context.bot.send_message(chat_id=user_id, text="گەڕایتەوە بۆ ڕووکاری سەرەکی.", reply_markup=main_keyboard())
     return ConversationHandler.END
 
 # ----------------- Main Execution -----------------
@@ -624,4 +657,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-        
+    
