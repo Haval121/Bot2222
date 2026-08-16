@@ -94,7 +94,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Helper Functions for Database
+# Helper Functions fr Database
 def get_user(user_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
