@@ -247,7 +247,7 @@ async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     add_user(user_id, username, name)
     await update.message.reply_text("✅ هەژمارەکەت بە سەرکەوتوویی دروستکرا.", reply_markup=main_keyboard())
     return ConversationHandler.END
-        # ----------------- Upload Video -----------------
+        # ----------------- Upload Video ----------------
 async def upload_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🎬 **بڵاوکردنەوەی ڤیدیۆ**\n\nتەنها ڤیدیۆ بنێره، من خۆکارانه زیادیدەکەم بۆ بەشی ڤیدیۆکان.\nدەتوانیت #هاشتاگیش لەگەڵ ژێرنووس ببنوسیت.",
