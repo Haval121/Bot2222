@@ -1,7 +1,7 @@
 import logging
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
-from sentence_transformers import SentenceTransformer, util
+from rapidfuzz import fuzz
 
 # ڕێکخستنی لۆگینگ
 logging.basicConfig(
@@ -9,58 +9,55 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-# بارکردنی مۆدێلی زیرەکی دەستکرد
-print("خەریکی بارکردنی مۆدێلی AIـین، تکایە چاوەڕێ بکە...")
-ai_model = SentenceTransformer('all-MiniLM-L6-v2')
-
-# داتابەیسە نموونەییەکەی کەناڵ و گروپەکان
+# داتابەیسێکی فراوانتر کە نموونەی جۆراوجۆری تێدایە (دەتوانیت هەرچەندت دەوێت زیادی بکەیت)
 channels_db = [
-    {"name": "Kurdish Coders", "username": "@KurdishCoders", "about": "گروپێک بۆ فێربوونی پڕۆگرامسازی، پایتۆن و دروستکردنی بۆت"},
-    {"name": "English Time", "username": "@EnglishTime", "about": "کەناڵی فێربوونی زمانی ئینگلیزی و قسەکردن بە ئینگلیزی"},
-    {"name": "Movie Land", "username": "@MovieLandKurd", "about": "دابەزاندنی فیلم و درامای جیهانی بە ژێرنووسی کوردی"},
-    {"name": "Tech News", "username": "@TechNews", "about": "هەواڵی تەکنەلۆژیا، مۆبایل و ئەپڵیکەیشنی نوی"}
+    {"name": "Mhrambazakan Group", "username": "@Mhrambazakan", "about": "گروپی سەرەکی mhrambazakan"},
+    {"name": "Mhrambaz One", "username": "@Mhrambaz1", "about": "کەناڵی تایبەتی mhrambaz1"},
+    {"name": "Maharmbaz Two", "username": "@Maharmbaz2", "about": "گروپی maharmbaz2"},
+    {"name": "Mhrambazakan VIP", "username": "@Mhrambazakan1", "about": "تایبەت بە mhrambazakan1"},
+    {"name": "Mhrambazakan Pro", "username": "@Mhrambazakan12", "about": "گروپی mhrambazakan12"},
+    {"name": "Mhrambazakann Chat", "username": "@Mhrambazakann", "about": "گفتوگۆی mhrambazakann"},
+    {"name": "Kurdish Coders", "username": "@KurdishCoders", "about": "گروپێک بۆ فێربوونی پڕۆگرامسازی و پایتۆن"},
+    {"name": "English Time", "username": "@EnglishTime", "about": "کەناڵی فێربوونی زمانی ئینگلیزی"},
+    {"name": "Movie Land", "username": "@MovieLandKurd", "about": "دابەزاندنی فیلم و درامای جیهانی"}
 ]
-
-# ئامادەکردنی ڤێکتەری وەسفەکان
-descriptions = [c['about'] for c in channels_db]
-channel_embeddings = ai_model.encode(descriptions, convert_to_tensor=True)
 
 # فەرمانی /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "سڵاو! من بۆتی دۆزینەوەی پێشکەوتووی کەناڵ و گروپم بە زیرەکی دەستکرد.\n"
-        "هەر شتێکت دەوێت، بە وەسف یان ناو باسی بکە تا بۆت بدۆزمەوە!"
+        "سڵاو! ئێستا هەر ناوێک یان وشەیەک دەتەوێت بنووسە، ڕاستەوخۆ بەدوایدا دەگەڕێم و نزیکترین ئەنجامەکانت بۆ دەهێنم."
     )
 
-# سیستمی گەڕانی زیرەک بەپێی پەیامی بەکارهێنەر
+# سیستمی گەڕانی گشتی و کراوە (هەر شتێک بەکارهێنەر بنووسێت)
 async def search_channels(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_query = update.message.text
+    user_query = update.message.text.strip()
     
-    # گۆڕینی پرسیاری بەکارهێنەر بۆ ڤێکتەری AI
-    query_embedding = ai_model.encode(user_query, convert_to_tensor=True)
+    matched_results = []
     
-    # بەراوردکردن بە ڕێگەی Cosine Similarity
-    cos_scores = util.cos_sim(query_embedding, channel_embeddings)[0]
+    # پشکنینی هەموو کەناڵەکان بەپێی ئەو شتەی بەکارهێنەر نووسیویەتی
+    for channel in channels_db:
+        # پشکنینی لەیەکچوون لەگەڵ یۆزەرتەگ، ناو، یان وەسف بە شێوازی Partial Match
+        score_username = fuzz.partial_ratio(user_query.lower(), channel['username'].lower())
+        score_name = fuzz.partial_ratio(user_query.lower(), channel['name'].lower())
+        score_about = fuzz.partial_ratio(user_query.lower(), channel['about'].lower())
+        
+        # ئەگەر لە هەر یەکێکیاندا ڕێژەی نزیکی لە 40% زیاتر بوو، دەیخە ناو ئەنجامەکانەوە
+        if score_username > 40 or score_name > 40 or score_about > 40:
+            if channel not in matched_results:
+                matched_results.append(channel)
     
-    best_match_idx = cos_scores.argmax().item()
-    best_score = cos_scores[best_match_idx].item()
-    
-    # گەڕاندنەوەی ئەنجام ئەگەر ڕێژەی گونجانەکە گونجاو بوو
-    if best_score > 0.2:
-        result = channels_db[best_match_idx]
-        response = (
-            "🔍 **باشترین کەناڵ/گروپ کە لەگەڵ داواکارییەکەت یەکدەگرێت:**\n\n"
-            f"📌 **ناو:** {result['name']}\n"
-            f"🔗 **یۆزەرتاگ:** {result['username']}\n"
-            f"📝 **وەسف:** {result['about']}"
-        )
+    # ناردنی ئەنجامەکان بۆ بەکارهێنەر
+    if matched_results:
+        response = f"🔍 **ئەنجامی گەڕان بۆ ('{user_query}'):**\n\n"
+        for res in matched_results:
+            response += f"📌 **ناو:** {res['name']}\n🔗 **لینک/یۆزەرتاگ:** {res['username']}\n📝 **وەسف:** {res['about']}\n\n"
     else:
-        response = "ببوورە، هیچ کەناڵێک کە لەگەڵ داواکارییەکەت بگونجێت نەدۆزرایەوە."
+        response = f"ببوورە، هیچ ئەنجامێک بۆ '{user_query}' نەدۆزرایەوە."
         
     await update.message.reply_text(response, parse_mode="Markdown")
 
 if __name__ == '__main__':
-    # تووکنەکەی تۆ لەم بۆتەدا جێگیر کراوە
+    # تووکنەکەت لەم بۆتەدا جێگیر کراوە
     application = ApplicationBuilder().token("8627963382:AAFI73W5CkvhhxRA2OP7SHPRCjwCEVdHKWg").build()
 
     application.add_handler(CommandHandler("start", start))
@@ -68,3 +65,4 @@ if __name__ == '__main__':
     
     print("بۆتەکە بە سەرکەوتوویی دەستی بە کار کرد!")
     application.run_polling()
+    
