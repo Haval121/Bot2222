@@ -6,7 +6,7 @@ from aiogram.filters import CommandStart
 from moviepy.editor import VideoFileClip, ImageClip, CompositeVideoClip
 from dotenv import load_dotenv
 
-# لێرەدا کۆدەکەت دانراوە
+# لێرەدا کۆدەەت دانراوە
 BOT_TOKEN = "8667887809:AAE8BpyPP9ehPEs0czgimcLiryYXHgryZYw"
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
