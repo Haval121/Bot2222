@@ -1,4 +1,1 @@
-aiogram
-moviepy
-python-dotenv
-
+python-telegram-bot
