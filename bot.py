@@ -26,4 +26,3 @@ if __name__ == '__main__':
     application.add_handler(MessageHandler(filters.VIDEO, handle_video))
     
     application.run_polling()
-    
