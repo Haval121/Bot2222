@@ -4,7 +4,7 @@ from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, Messa
 from moviepy.editor import VideoFileClip, ImageClip, CompositeVideoClip
 
 TOKEN = "8667887809:AAE8BpyPP9ehPEs0czgimcLiryYXHgryZYw"
-# فەرهەنگێک بۆ هەڵگرتنی لۆگۆی هەر بەکارهێنەرێک
+# فەرهەنگێک بۆ ەڵگرتنی لۆگۆی هەر بەکارهێنەرێک
 user_logos = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
