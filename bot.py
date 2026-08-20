@@ -8,7 +8,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("ڤیدیۆکەت بنێرە تا وێنەی کەناڵەکەت لەگەڵ لینکدا بۆ بنێرم.")
 
 async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # ناردنی ڤیدیۆکە وەک خۆی لەگەڵ کاپشن
+    # ناردنی ڤیدیۆکە وەکخۆی لەگەڵ کاپشن
     caption_text = (
         "بینی ڤیدیۆی زیاتر 👇\n"
         "[سەردانی کەناڵ](https://t.me/+1NHBFRGHW_oyOWE6)"
