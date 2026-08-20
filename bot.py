@@ -1,19 +1,18 @@
-import os
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
 
 TOKEN = "8667887809:AAE8BpyPP9ehPEs0czgimcLiryYXHgryZYw"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("ڤیدیۆکەت بنێرە تا وێنەی کەناڵەکەت لەگەڵ لینکدا بۆ بنێرم.")
+    await update.message.reply_text("بەخێر بێن! ڤیدیۆیەک بنێرە تا لەگەڵ لینکەکەت بۆ بنێرمەوە.")
 
 async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # ناردنی ڤیدیۆکە وەکخۆی لەگەڵ کاپشن
     caption_text = (
         "بینی ڤیدیۆی زیاتر 👇\n"
         "[سەردانی کەناڵ](https://t.me/+1NHBFRGHW_oyOWE6)"
     )
     
+    # ناردنی ڤیدیۆکە وەک خۆی لەگەڵ لینکەکە
     await update.message.reply_video(
         video=update.message.video.file_id,
         caption=caption_text,
@@ -26,6 +25,5 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.VIDEO, handle_video))
     
-    print("بۆتەکە کاری کرد...")
     application.run_polling()
     
