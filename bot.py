@@ -1,3 +1,19 @@
+import subprocess
+import sys
+
+# ئەم بەشە کتێبخانەکان دڵنیا دەکاتەوە کە دامەزراون
+def install(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+try:
+    import aiogram
+    import moviepy
+    import dotenv
+except ImportError:
+    install("aiogram")
+    install("moviepy")
+    install("python-dotenv")
+
 import os
 import asyncio
 from aiogram import Bot, Dispatcher, F
@@ -6,7 +22,7 @@ from aiogram.filters import CommandStart
 from moviepy.editor import VideoFileClip, ImageClip, CompositeVideoClip
 from dotenv import load_dotenv
 
-# لێرەدا کۆدەەت دانراوە
+# پاشان کۆدەکەی پێشوو...
 BOT_TOKEN = "8667887809:AAE8BpyPP9ehPEs0czgimcLiryYXHgryZYw"
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -17,7 +33,7 @@ async def start_handler(message: Message):
 
 @dp.message(F.video)
 async def process_video(message: Message):
-    status_msg = await message.answer("⏳ خەریکم ڤیدیۆکە پرۆسێس دەکەم، چاوەڕوان بە...")
+    status_msg = await message.answer("⏳ خەریکم ڤیدیۆکە پرۆسێس دەکەم...")
     
     video_file = await bot.get_file(message.video.file_id)
     input_video_path = f"in_{message.from_user.id}.mp4"
@@ -29,12 +45,8 @@ async def process_video(message: Message):
     try:
         clip = VideoFileClip(input_video_path)
         logo = ImageClip(logo_path).set_duration(clip.duration)
-        
-        # قەبارەی لۆگۆ
         logo = logo.resize(width=clip.w * 0.20)
-        
-        # شوێنی لۆگۆ
-        logo = logo.set_position(("right", "bottom")).margin(right=20, bottom=20, opacity=0)
+        logo = logo.set_position(("right", "bottom"))
         
         final_clip = CompositeVideoClip([clip, logo])
         
