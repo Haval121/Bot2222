@@ -30,7 +30,7 @@ user_states = {}
 @bot.on(events.NewMessage(pattern='/start'))
 async def start_handler(event):
     await event.respond(
-        "👋 بە خێر هاتیت بۆ بۆتی دروستکردنی سیشنی تێلیگرام.\n\n"
+        "👋 بە خێر هاتیت بۆ بۆتی دروستکردنیسیشنی تێلیگرام.\n\n"
         "📱 تکایە ژمارەی تەلەفۆنەکەت بنووسە (بە کۆدی وڵاتەوە، بۆ نموونە: `+9647501234567`):"
     )
     user_states[event.sender_id] = {"step": "waiting_phone"}
