@@ -29,7 +29,6 @@ user_states = {}
 
 @bot.on(events.NewMessage(pattern='/start'))
 async def start_handler(event):
-    # دروستکردنی دوگمەی ناردنی ژمارە بە شێوەی خۆکار
     button = [[Button.request_phone("📱 ناردنی ژمارەی تەلەفۆن بە دوگمە")]]
     await event.respond(
         "👋 بە خێر هاتیت بۆ بۆتی دروستکردنی سیشنی تێلیگرام.\n\n"
@@ -46,14 +45,18 @@ async def message_handler(event):
 
     state = user_states[user_id]["step"]
 
+    # دڵنیابوونەوە لەوەی کە تێکست یان کۆنتاکت هەیە بۆ ئەوەی NoneType ڕوو نەدات
+    text = event.raw_text if event.raw_text else ""
+
     if state == "waiting_phone":
-        # پشکنیین بۆ ئەوەی ئایا بەکارهێنەر دوگمەکەی داگرتووە و ژمارەکەی ناردووە
+        phone = None
         if event.message.contact:
-            phone = str(event.message.contact.phone_number).replace("+", "")
-        elif event.raw_text:
-            phone = event.raw_text.strip().replace(" ", "").replace("+", "")
+            phone = str(event.message.contact.phone_number).replace("+", "").replace(" ", "")
+        elif text.strip():
+            phone = text.strip().replace(" ", "").replace("+", "")
         else:
-            await event.respond("❌ تکایە دوگمەکەی خوارەوە داگرە بۆ ناردنی ژمارەکەت.")
+            # ئەگەر کەسەکە ستیکەر، وێنە یان شتێکی تر بنێرێت، بۆتەکە تەنها ئاگاداری دەکاتەوە بێ ئەوەی بشکێت
+            await event.respond("❌ تکایە تەنها دوگمەکەی خوارەوە داگرە یان ژمارەکەت بنووسە.")
             return
 
         session_name = os.path.join(SESSION_DIR, f"{phone}")
@@ -68,7 +71,6 @@ async def message_handler(event):
             await client.connect()
             await client.send_code_request(phone)
             user_states[user_id]["step"] = "waiting_code"
-            # لابردنی دوگمەکە لە کاتی ناردنی کۆد
             await event.respond("✅ کۆدی تێلیگرام بۆت نێردرا.\n\nتکایە کۆدەکە بنووسە (بۆ نموونە: `12345`):", buttons=None)
         except Exception as e:
             await event.respond(f"❌ هەڵە ڕوویدا: {e}", buttons=None)
@@ -77,7 +79,6 @@ async def message_handler(event):
     elif state == "waiting_code":
         client = user_states[user_id]["client"]
         phone = user_states[user_id]["phone"]
-        text = event.raw_text.strip() if event.raw_text else ""
         code = text.replace(" ", "")
 
         try:
@@ -93,7 +94,6 @@ async def message_handler(event):
 
     elif state == "waiting_password":
         client = user_states[user_id]["client"]
-        text = event.raw_text.strip() if event.raw_text else ""
         try:
             await client.sign_in(password=text)
             await finish_login(event, user_id)
