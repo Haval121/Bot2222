@@ -1,7 +1,7 @@
 import asyncio
 import os
 import json
-from telethon import TelegramClient, events
+from telethon import TelegramClient, events, Button
 from telethon.errors import SessionPasswordNeededError
 
 API_ID = 36234377
@@ -29,9 +29,12 @@ user_states = {}
 
 @bot.on(events.NewMessage(pattern='/start'))
 async def start_handler(event):
+    # دروستکردنی دوگمەی ناردنی ژمارە بە شێوەی خۆکار
+    button = [[Button.request_phone("📱 ناردنی ژمارەی تەلەفۆن بە دوگمە")]]
     await event.respond(
-        "👋 بە خێر هاتیت بۆ بۆتی دروستکردنیسیشنی تێلیگرام.\n\n"
-        "📱 تکایە ژمارەی تەلەفۆنەکەت بنووسە (بە کۆدی وڵاتەوە، بۆ نموونە: `+9647501234567`):"
+        "👋 بە خێر هاتیت بۆ بۆتی دروستکردنی سیشنی تێلیگرام.\n\n"
+        "تکایە دوگمەی خوارەوە داگرە بۆ ئەوەی ژمارەکەت بە بێ هەڵە بنێردرێت:",
+        buttons=button
     )
     user_states[event.sender_id] = {"step": "waiting_phone"}
 
@@ -42,10 +45,17 @@ async def message_handler(event):
         return
 
     state = user_states[user_id]["step"]
-    text = event.raw_text.strip()
 
     if state == "waiting_phone":
-        phone = text.replace(" ", "").replace("+", "")
+        # پشکنیین بۆ ئەوەی ئایا بەکارهێنەر دوگمەکەی داگرتووە و ژمارەکەی ناردووە
+        if event.message.contact:
+            phone = str(event.message.contact.phone_number).replace("+", "")
+        elif event.raw_text:
+            phone = event.raw_text.strip().replace(" ", "").replace("+", "")
+        else:
+            await event.respond("❌ تکایە دوگمەکەی خوارەوە داگرە بۆ ناردنی ژمارەکەت.")
+            return
+
         session_name = os.path.join(SESSION_DIR, f"{phone}")
         
         user_states[user_id]["phone"] = phone
@@ -58,14 +68,16 @@ async def message_handler(event):
             await client.connect()
             await client.send_code_request(phone)
             user_states[user_id]["step"] = "waiting_code"
-            await event.respond("✅ کۆدی تێلیگرام بۆت نێردرا.\n\nکۆدەکە بنووسە:")
+            # لابردنی دوگمەکە لە کاتی ناردنی کۆد
+            await event.respond("✅ کۆدی تێلیگرام بۆت نێردرا.\n\nتکایە کۆدەکە بنووسە (بۆ نموونە: `12345`):", buttons=None)
         except Exception as e:
-            await event.respond(f"❌ هەڵە ڕوویدا: {e}")
+            await event.respond(f"❌ هەڵە ڕوویدا: {e}", buttons=None)
             del user_states[user_id]
 
     elif state == "waiting_code":
         client = user_states[user_id]["client"]
         phone = user_states[user_id]["phone"]
+        text = event.raw_text.strip() if event.raw_text else ""
         code = text.replace(" ", "")
 
         try:
@@ -81,6 +93,7 @@ async def message_handler(event):
 
     elif state == "waiting_password":
         client = user_states[user_id]["client"]
+        text = event.raw_text.strip() if event.raw_text else ""
         try:
             await client.sign_in(password=text)
             await finish_login(event, user_id)
