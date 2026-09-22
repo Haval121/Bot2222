@@ -44,24 +44,25 @@ async def message_handler(event):
         return
 
     state = user_states[user_id]["step"]
-
-    # دڵنیابوونەوە لەوەی کە تێکست یان کۆنتاکت هەیە بۆ ئەوەی NoneType ڕوو نەدات
     text = event.raw_text if event.raw_text else ""
 
     if state == "waiting_phone":
         phone = None
         if event.message.contact:
+            # وەرگرتنی ژمارە لە ڕێگەی دوگمەی کۆنتاکتەوە
             phone = str(event.message.contact.phone_number).replace("+", "").replace(" ", "")
         elif text.strip():
+            # وەرگرتنی ژمارە ئەگەر بە دەست نووسرابێت
             phone = text.strip().replace(" ", "").replace("+", "")
         else:
-            # ئەگەر کەسەکە ستیکەر، وێنە یان شتێکی تر بنێرێت، بۆتەکە تەنها ئاگاداری دەکاتەوە بێ ئەوەی بشکێت
-            await event.respond("❌ تکایە تەنها دوگمەکەی خوارەوە داگرە یان ژمارەکەت بنووسە.")
+            await event.respond("❌ تکایە تەنها دوگمەکەی خوارەوە داگرە.")
             return
 
+        # دڵنیابوونەوە لەوەی ژمارەکە فۆرماتی دروستی هەەیە
+        formatted_phone = f"+{phone}"
         session_name = os.path.join(SESSION_DIR, f"{phone}")
         
-        user_states[user_id]["phone"] = phone
+        user_states[user_id]["phone"] = formatted_phone
         user_states[user_id]["session_path"] = session_name
 
         client = TelegramClient(session_name, API_ID, API_HASH)
@@ -69,11 +70,12 @@ async def message_handler(event):
 
         try:
             await client.connect()
-            await client.send_code_request(phone)
+            await client.send_code_request(formatted_phone)
             user_states[user_id]["step"] = "waiting_code"
             await event.respond("✅ کۆدی تێلیگرام بۆت نێردرا.\n\nتکایە کۆدەکە بنووسە (بۆ نموونە: `12345`):", buttons=None)
         except Exception as e:
-            await event.respond(f"❌ هەڵە ڕوویدا: {e}", buttons=None)
+            await event.respond(f"❌ هەڵە ڕوویدا لە ناردنی کۆد: {e}", buttons=None)
+            await client.disconnect()
             del user_states[user_id]
 
     elif state == "waiting_code":
@@ -114,27 +116,29 @@ async def finish_login(event, user_id):
 
     if os.path.exists(real_session_file):
         accounts = load_accounts()
+        clean_phone = phone.replace("+", "")
         account_entry = {
             "api_id": API_ID,
             "api_hash": API_HASH,
-            "phone": f"+{phone}",
+            "phone": phone,
             "session": session_path
         }
-        if not any(acc["phone"] == f"+{phone}" for acc in accounts):
+        if not any(acc["phone"] == phone for acc in accounts):
             accounts.append(account_entry)
             save_accounts(accounts)
 
         await event.respond(
             f"🎉 **سەرکەوتوو بوو!**\n\n"
             f"👤 ناوی ئەکاونت: {me.first_name}\n"
-            f"📱 ژمارە: +{phone}\n\n"
+            f"📱 ژمارە: {phone}\n\n"
             f"فایلی سیشنەکەت دروست بوو:"
         )
         await event.respond(file=real_session_file)
     else:
-        await event.respond("❌ هەڵەیەک ڕوویدا.")
+        await event.respond("❌ هەڵەیەک ڕوویدا لە پاشەکەوتکردنی فایلەکە.")
 
     del user_states[user_id]
 
 print("Telegram Bot is running for sessions...")
 asyncio.get_event_loop().run_forever()
+            
